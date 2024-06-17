@@ -10,6 +10,7 @@ from copy import deepcopy
 from scipy.linalg import blas, lapack
 import pandas as pd
 import os
+import sys
 
 
 
@@ -23,8 +24,6 @@ def rosenbrock_5d(x):
     Returns:
     float: The value of the 5-dimensional Rosenbrock function at x.
     """
-    if len(x) != 5:
-        raise ValueError("Input array must have exactly 5 elements.")
     
     return sum(100.0 * (x[i+1] - x[i]**2)**2 + (1 - x[i])**2 for i in range(len(x) - 1))
 
@@ -1224,6 +1223,11 @@ def alc_dgp2(object, x_new=None, ref=None, cores=1):
 
 
 #######1d usecase
+
+print('num arg is', len(sys.argv))
+print('arg is', sys.argv, sys.argv[1])
+exp_name = sys.argv[1]
+
 root = os.getcwd() 
 log_path =  os.path.join(root, 'log')
 print('log_path', log_path)
@@ -1236,22 +1240,23 @@ np.random.seed(seed)
 print(f"layers is {layers}")
 
 # Generate original data and reference grid
-n = 10
-new_n = 40
+n = 80
+new_n = 70
 # new_n = 10
-m = 100
+m = 1000
 noise = 0.1
+n_dim = 5
 
 
 # x = np.linspace(0, 1, n).reshape(-1, 1)
 # # Evaluate the objective function at these points and add noise
 # y = np.apply_along_axis(f, 1, x) + np.random.normal(0, noise, n).reshape(-1,1)
 
-sampler = qmc.LatinHypercube(d=5)
+sampler = qmc.LatinHypercube(d=n_dim)
 x = sampler.random(n=n)
 print('sample_x', x, x.shape)
 y = np.apply_along_axis(rosenbrock_5d, 1, x).reshape(-1,1) + np.random.normal(0, noise, n).reshape(-1,1)
-print('sample_y', y, y.shape)
+print('sample_y', y.shape)
 
 
 
@@ -1298,16 +1303,20 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 10000
-        burn = 8000
+        # nmcmc = 10000
+        # burn = 8000
+        nmcmc = 3000
+        burn = 2000
         thin = 2
     else:
-        nmcmc = 3000
-        burn = 1000
+        # nmcmc = 3000
+        # burn = 1000
+        nmcmc = 300
+        burn = 100
         thin = 2
     
     # Fit Model
-    fit = fit_two_layer(x, y, D=5, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
+    fit = fit_two_layer(x, y, D=n_dim, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
     
     # Trim, predict, and calculate ALC
     fit = trim_dgp2(fit, burn=burn, thin=thin)
@@ -1336,7 +1345,8 @@ for t in range(n, n + new_n + 1):
     plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t]}
     
     
-    with open(f'plot{t}.pyc', 'wb') as file:
+    with open(f'{exp_name}_plot{t}.pyc', 'wb') as file:
+        # function+initial_round+new_round
         pickle.dump(plot, file)
         file.close()
     
@@ -1385,15 +1395,15 @@ print('x_new_list', x_new_list)
 
 
 
-# Example usage
-n = 10
-noise = 0.1
+# # Example usage
+# n = 10
+# noise = 0.1
 
-sampler = qmc.LatinHypercube(d=5)
-x = sampler.random(n=2)
-print('sample_x', x)
-y = np.apply_along_axis(rosenbrock_5d, 1, x).reshape(-1,1) + np.random.normal(0, noise, 2).reshape(-1,1)
-print('sample_y', y)
+# sampler = qmc.LatinHypercube(d=5)
+# x = sampler.random(n=2)
+# print('sample_x', x)
+# y = np.apply_along_axis(rosenbrock_5d, 1, x).reshape(-1,1) + np.random.normal(0, noise, 2).reshape(-1,1)
+# print('sample_y', y)
 
 
 
