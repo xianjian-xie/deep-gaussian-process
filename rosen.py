@@ -1243,7 +1243,7 @@ print(f"layers is {layers}")
 noise = 0.1
 
 n = 10
-new_n = 30
+new_n = 50
 m = 100
 n_dim = 5
 
@@ -1309,16 +1309,16 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        # nmcmc = 10000
-        # burn = 8000
-        nmcmc = 3000
-        burn = 2000
+        nmcmc = 10000
+        burn = 8000
+        # nmcmc = 3000
+        # burn = 2000
         thin = 2
     else:
-        # nmcmc = 3000
-        # burn = 1000
-        nmcmc = 300
-        burn = 100
+        nmcmc = 3000
+        burn = 1000
+        # nmcmc = 300
+        # burn = 100
         thin = 2
     
     # Fit Model
@@ -1333,9 +1333,9 @@ for t in range(n, n + new_n + 1):
 
     # 'g', 'theta_y', 'theta_w', 'w'
     # Trim, predict, and calculate ALC
-    trimmed_fit = trim_dgp2(fit, burn=burn, thin=thin)
-    predicted_fit = predict_dgp2(trimmed_fit, xx, lite=False)
-    alc_list = alc_dgp2(predicted_fit)
+    fit = trim_dgp2(fit, burn=burn, thin=thin)
+    fit = predict_dgp2(fit, xx, lite=False)
+    alc_list = alc_dgp2(fit)
     alc = alc_list['value']
     fit_time = fit['time'] + alc_list['time']
     
@@ -1356,6 +1356,9 @@ for t in range(n, n + new_n + 1):
     
     print('fit sigma', np.diag(fit['Sigma']), np.diag(fit['Sigma']).shape)
     print('fit alc', alc, alc.shape)
+    # plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t],
+    #         'g':fit['g'], 'theta_y': fit['theta_y'], 'theta_w': fit['theta_w'], 'w': fit['w'],
+    #         'xx': xx, 'yy': xx}
     plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t],
             'g':fit['g'], 'theta_y': fit['theta_y'], 'theta_w': fit['theta_w'], 'w': fit['w'],
             'xx': xx, 'yy': xx}
