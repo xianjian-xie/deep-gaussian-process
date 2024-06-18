@@ -1,0 +1,2 @@
+every time simulation need to modify n, new_n, m, ndim, sampler
+fit items, fit dict_keys(['x', 'y', 'nmcmc', 'settings', 'v', 'g', 'theta_y', 'theta_w', 'w', 'tau2', 'll', 'time', 'class'])

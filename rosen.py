@@ -1240,12 +1240,18 @@ np.random.seed(seed)
 print(f"layers is {layers}")
 
 # Generate original data and reference grid
-n = 80
-new_n = 70
-# new_n = 10
-m = 1000
 noise = 0.1
+
+n = 10
+new_n = 30
+m = 100
 n_dim = 5
+
+#rosen5d
+# n = 80
+# new_n = 70
+# m = 1000
+# n_dim = 5
 
 
 # x = np.linspace(0, 1, n).reshape(-1, 1)
@@ -1254,10 +1260,9 @@ n_dim = 5
 
 sampler = qmc.LatinHypercube(d=n_dim)
 x = sampler.random(n=n)
-print('sample_x', x, x.shape)
 y = np.apply_along_axis(rosenbrock_5d, 1, x).reshape(-1,1) + np.random.normal(0, noise, n).reshape(-1,1)
-print('sample_y', y.shape)
-
+# print('sample_x', x, x.shape)
+# print('sample_y', y.shape)
 
 
 # x = lhs(1, samples=n)
@@ -1296,9 +1301,10 @@ for t in range(n, n + new_n + 1):
     # xx = np.linspace(0, 1, m).reshape(-1, 1)
     # yy = np.apply_along_axis(f, 1, xx).reshape(-1,1)
     xx = sampler.random(n=m)
-    print('sample_xx', xx, xx.shape)
+    xx[:,1:n_dim] = 0.5
     yy = np.apply_along_axis(rosenbrock_5d, 1, xx).reshape(-1,1) 
-    print('sample_yy', yy, yy.shape)
+    print('sample_xx0', xx, xx.shape)
+    print('sample_yy0', yy, yy.shape)
 
 
     
@@ -1318,10 +1324,18 @@ for t in range(n, n + new_n + 1):
     # Fit Model
     fit = fit_two_layer(x, y, D=n_dim, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
     
+    print("fit items, fit", fit.keys())
+    print('sampled hyper0', fit['g'].shape)  #sampled hyper (3000,) nmcmc
+    print('sampled hyper1', fit['theta_y'].shape)    #sampled hyper (3000,) nmcmc
+    print('sampled hyper2', fit['theta_w'].shape)    #sampled hyper2 (3000, 1)  nmcmc x ndim
+    print('sampled hyper3', len(fit['w']), fit['w'][0].shape)    #sampled hyper3  3000 (10, 1) (11, 1) ... (12, 1)  num_x x ndim
+
+
+    # 'g', 'theta_y', 'theta_w', 'w'
     # Trim, predict, and calculate ALC
-    fit = trim_dgp2(fit, burn=burn, thin=thin)
-    fit = predict_dgp2(fit, xx, lite=False)
-    alc_list = alc_dgp2(fit)
+    trimmed_fit = trim_dgp2(fit, burn=burn, thin=thin)
+    predicted_fit = predict_dgp2(trimmed_fit, xx, lite=False)
+    alc_list = alc_dgp2(predicted_fit)
     alc = alc_list['value']
     fit_time = fit['time'] + alc_list['time']
     
@@ -1342,8 +1356,14 @@ for t in range(n, n + new_n + 1):
     
     print('fit sigma', np.diag(fit['Sigma']), np.diag(fit['Sigma']).shape)
     print('fit alc', alc, alc.shape)
-    plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t]}
-    
+    plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t],
+            'g':fit['g'], 'theta_y': fit['theta_y'], 'theta_w': fit['theta_w'], 'w': fit['w'],
+            'xx': xx, 'yy': xx}
+    # print('sampled hyper0', fit['g'].shape)  #sampled hyper (3000,) nmcmc
+    # print('sampled hyper1', fit['theta_y'].shape)    #sampled hyper (3000,) nmcmc
+    # print('sampled hyper2', fit['theta_w'].shape)    #sampled hyper2 (3000, 1)  nmcmc x ndim
+    # print('sampled hyper3', len(fit['w']), fit['w'][0].shape)    #sampled hyper3  3000 (10, 1) (11, 1) ... (12, 1)  num_x x ndim
+
     
     with open(f'{exp_name}_plot{t}.pyc', 'wb') as file:
         # function+initial_round+new_round
