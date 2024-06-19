@@ -6,7 +6,15 @@ every time simulation need to modify n, new_n, m, ndim, sampler
 fit items, fit dict_keys(['x', 'y', 'nmcmc', 'settings', 'v', 'g', 'theta_y', 'theta_w', 'w', 'tau2', 'll', 'time', 'class'])
 
 python rosen.py rosen5d_10-50_m100
-nmcmc = da
+nmcmc = 10000 
+fix 4 dimension, 1 dimension free
+
+python rosen.py rosen5d_n10-50_m100
+nmcmc = 10000
+5 dimenssion free
+
+
+
 
 
 
