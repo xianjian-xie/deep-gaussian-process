@@ -1248,9 +1248,9 @@ noise = 0.1
 # n_dim = 5
 
 #rosen5d
-n = 80
-new_n = 70
-m = 1000
+n = 10
+new_n = 30
+m = 100
 n_dim = 5
 
 
@@ -1301,7 +1301,7 @@ for t in range(n, n + new_n + 1):
     # xx = np.linspace(0, 1, m).reshape(-1, 1)
     # yy = np.apply_along_axis(f, 1, xx).reshape(-1,1)
     xx = sampler.random(n=m)
-    xx[:,1:n_dim] = 0.5
+    # xx[:,1:n_dim] = 0.5
     yy = np.apply_along_axis(rosenbrock_5d, 1, xx).reshape(-1,1) 
     print('sample_xx0', xx, xx.shape)
     print('sample_yy0', yy, yy.shape)
@@ -1361,7 +1361,7 @@ for t in range(n, n + new_n + 1):
     #         'xx': xx, 'yy': xx}
     plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t],
             'g':fit['g'], 'theta_y': fit['theta_y'], 'theta_w': fit['theta_w'], 'w': fit['w'],
-            'xx': xx, 'yy': xx}
+            'xx': xx, 'yy': yy}
     # print('sampled hyper0', fit['g'].shape)  #sampled hyper (3000,) nmcmc
     # print('sampled hyper1', fit['theta_y'].shape)    #sampled hyper (3000,) nmcmc
     # print('sampled hyper2', fit['theta_w'].shape)    #sampled hyper2 (3000, 1)  nmcmc x ndim
