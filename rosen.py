@@ -1242,16 +1242,16 @@ print(f"layers is {layers}")
 # Generate original data and reference grid
 noise = 0.1
 
-n = 10
-new_n = 50
-m = 100
-n_dim = 5
+# n = 10
+# new_n = 50
+# m = 100
+# n_dim = 5
 
 #rosen5d
-# n = 80
-# new_n = 70
-# m = 1000
-# n_dim = 5
+n = 80
+new_n = 70
+m = 1000
+n_dim = 5
 
 
 # x = np.linspace(0, 1, n).reshape(-1, 1)
@@ -1309,16 +1309,16 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 10000
-        burn = 8000
-        # nmcmc = 3000
-        # burn = 2000
+        # nmcmc = 10000
+        # burn = 8000
+        nmcmc = 3000
+        burn = 2000
         thin = 2
     else:
-        nmcmc = 3000
-        burn = 1000
-        # nmcmc = 300
-        # burn = 100
+        # nmcmc = 3000
+        # burn = 1000
+        nmcmc = 1000
+        burn = 300
         thin = 2
     
     # Fit Model
