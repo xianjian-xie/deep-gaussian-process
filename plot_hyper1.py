@@ -16,13 +16,12 @@ for t in range(10,41):
     with open(f'{exp_name}_plot{t}.pyc', 'rb') as f:
         plot = pickle.load(f)
         # g_list.append(plot['g'])
-        # g_list.append(plot['theta_y'])
-        g_list.append(plot['theta_w'][:,0])
-for i, g in enumerate(g_list, start=10):
-    print('gshape', g.shape)
-    x = np.full(g.shape, i)
-    y = g
-    ax.scatter(x,y, color='blue', alpha=0.5, s=10)
+        g_list.append(plot['theta_y'])
+        # g_list.append(plot['theta_w'][:,0])s
+
+x = np.arange(10,41)
+y = [np.mean(g) for g in g_list]
+ax.plot(x,y, color='blue', marker='o',linestyle='-', label='hyperparam val')
 
 ax.set_xlabel('Round')
 ax.set_ylabel('Hyper')
