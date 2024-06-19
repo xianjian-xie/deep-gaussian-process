@@ -1321,7 +1321,7 @@ for t in range(n, n + new_n + 1):
         burn = 300
         thin = 2
     
-    # Fit Model
+    # Fit Model MCMC sampling
     fit = fit_two_layer(x, y, D=n_dim, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
     
     print("fit items, fit", fit.keys())
