@@ -62,7 +62,7 @@ m = 1000
 # X_test = np.linspace(0, 1, m).reshape(-1, 1)
 # yy = np.apply_along_axis(f, 1, xx).reshape(-1,1)
 
-with open('rosen5d_n80-70_m1000_plot80.pyc', 'rb') as f:
+with open('rosen5d_80-70_m100_plot80.pyc', 'rb') as f:
     plot1 = pickle.load(f)
 
     # print('fit mean', fit['mean'], fit['mean'].shape)
@@ -98,8 +98,8 @@ plt.plot(X_test[:,0][sort_idx], y_test[sort_idx], 'r-', label='DGP actual')
 # plt.scatter(X_test[:,0], mean,  label='DGP predict mean')
 
 
-plt.fill_between(X_test[:,0][sort_idx], mean[sort_idx] - 0.05 * std[sort_idx], 
-                 mean[sort_idx] + 0.05 * std[sort_idx], color='blue', alpha=0.2, label='95% Confidence Interval')
+plt.fill_between(X_test[:,0][sort_idx], mean[sort_idx] - 0.0005 * std[sort_idx], 
+                 mean[sort_idx] + 0.0005 * std[sort_idx], color='blue', alpha=0.2, label='95% Confidence Interval')
 plt.legend()
 plt.title("Deep Gaussian Process on Piecewise Function")
 plt.xlabel("x")

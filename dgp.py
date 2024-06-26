@@ -93,6 +93,7 @@ def distance_py(X1_in, X2_in):
     n1, m = X1_in.shape
     n2 = X2_in.shape[0]
     
+    
     # Initialize the output distance matrix
     D_out = np.zeros((n1, n2))
     
