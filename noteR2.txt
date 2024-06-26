@@ -1,0 +1,25 @@
+higdon <- function(x) {
+  i <- which(x <= 0.6)
+  x[i] <- 2 * sin(pi * 0.8 * x[i] * 4) + 0.4 * cos(pi * 0.8 * x[i] * 16)
+  x[-i] <- 2 * x[-i] - 1
+  return(x)
+}
+
+# Training data
+n <- 24
+x <- seq(0, 1, length = n)
+y <- higdon(x)
+
+# Testing data
+np <- 100
+xp <- seq(0, 1, length = np)
+yp <- higdon(xp)
+
+plot(xp, yp, type = "l", col = 4, xlab = "X", ylab = "Y", main = "Higdon function")
+points(x, y)
+
+fit1 <- fit_two_layer(x, y, nmcmc = 10000, verb = FALSE)
+plot(fit1)
+fit1 <- trim(fit1, 5000, 2) # remove 5000 as burn-in, thin by half
+fit1 <- predict(fit1, xp, lite = FALSE)
+plot(fit1)
