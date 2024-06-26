@@ -48,6 +48,7 @@ def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale
     # print('K', K)
     Mi = inv_det['Mi']
     ldet = inv_det['ldet']
+    print('inv_det', Mi.shape, ldet.shape)
     quadterm = (out_vec - mu).T @ Mi @ (out_vec - mu)
     if (outer):
         logl_val = (-n * 0.5) * np.log(quadterm) - 0.5 * ldet
