@@ -93,7 +93,6 @@ def distance_py(X1_in, X2_in):
     n1, m = X1_in.shape
     n2 = X2_in.shape[0]
     
-    
     # Initialize the output distance matrix
     D_out = np.zeros((n1, n2))
     
@@ -1225,10 +1224,53 @@ m = 100
 noise = 0.1
 
 
-x = np.linspace(0, 1, n).reshape(-1, 1)
+# x = np.linspace(0, 1, n).reshape(-1, 1)
 
 # Evaluate the objective function at these points and add noise
-y = np.apply_along_axis(f, 1, x) + np.random.normal(0, noise, n).reshape(-1,1)
+# y = np.apply_along_axis(f, 1, x) + np.random.normal(0, noise, n).reshape(-1,1)
+
+x = np.array([1.36981,    -1.38577,
+0.587107,    0.708629,
+1.11078 ,   -1.35198,
+0.604678,   -0.113224,
+-1.09662,     0.86328,
+-1.93585,    -2.09702,
+-0.796596,    0.589165,
+-0.172759 ,   0.317555,
+0.414028 ,   0.952823,
+-1.8498,   -0.231656,
+1.11212 ,     0.4542,
+0.711986 ,   -1.96284,
+-0.0535862,   0.0855292,
+1.35658 ,    1.17783,
+-1.29087 ,    0.13915,
+0.765691  ,  -1.04417,
+-0.13442   , 0.297845,
+-1.0086  ,  0.890088,
+0.311205  ,  0.482937,
+-0.00486998,     1.22764]).reshape((-1,2))
+print('x is', x)
+
+y = np.array([-0.766594,
+-0.522244,
+-0.722181,
+-0.562775,
+ 0.529142,
+  2.80303,
+ 0.166224,
+-0.266232,
+-0.460391,
+  2.62303,
+-0.655071,
+-0.667461,
+ -0.33331,
+-0.675061,
+ 0.760724,
+-0.641081,
+-0.285415,
+ 0.416961,
+-0.449543,
+-0.291749]).reshape((-1,1))
 
 
 # x = lhs(1, samples=n)
@@ -1268,7 +1310,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 10000
+        nmcmc = 1000
         burn = 8000
         thin = 2
     else:
@@ -1277,8 +1319,10 @@ for t in range(n, n + new_n + 1):
         thin = 2
     
     # Fit Model
-    fit = fit_two_layer(x, y, D=1, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
-    
+    fit = fit_two_layer(x, y, D=2, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
+    print('param theta is', fit['theta'][nmcmc])
+    print('param tau2 is', fit['tau2'][nmcmc])
+
     # Trim, predict, and calculate ALC
     fit = trim_dgp2(fit, burn=burn, thin=thin)
     fit = predict_dgp2(fit, xx, lite=False)

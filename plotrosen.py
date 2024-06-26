@@ -63,16 +63,27 @@ m = 1000
 # yy = np.apply_along_axis(f, 1, xx).reshape(-1,1)
 
 with open('rosen5d_80-70_m100_plot80.pyc', 'rb') as f:
+# with open('rosen2d_n10-70_m200_plot32.pyc', 'rb') as f:
+
+    
     plot1 = pickle.load(f)
 
+
+   
     # print('fit mean', fit['mean'], fit['mean'].shape)
     # print('fit sigma', np.diag(fit['Sigma']), np.diag(fit['Sigma']).shape)
     # print('fit alc', alc, alc.shape)
     # plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc}
 
+rmse = plot1['rmse']
 mean = plot1['mean'][0:100]
 # mean = plot1['mean']
 std = plot1['sigma'][0:100]
+
+
+# print('mean is',  mean.shape, X_test.shape, X_test[:,0].reshape(-1).shape, mean.reshape(-1).shape)
+print('std is', std, std.shape)
+print(f'rmse: {rmse}')
 
 
 X_test = plot1['xx']
@@ -80,9 +91,6 @@ X_test = X_test[0:100]
 print('X_test shape', X_test.shape)
 y_test = np.apply_along_axis(rosenbrock_5d, 1, X_test).reshape(-1,1) 
 
-
-print('mean is',  mean.shape, X_test.shape, X_test[:,0].reshape(-1).shape, mean.reshape(-1).shape)
-print('std is', std, std.shape)
 
 
 sort_idx = np.argsort(X_test[:,0])
@@ -100,6 +108,8 @@ plt.plot(X_test[:,0][sort_idx], y_test[sort_idx], 'r-', label='DGP actual')
 
 plt.fill_between(X_test[:,0][sort_idx], mean[sort_idx] - 0.0005 * std[sort_idx], 
                  mean[sort_idx] + 0.0005 * std[sort_idx], color='blue', alpha=0.2, label='95% Confidence Interval')
+# plt.fill_between(X_test[:,0][sort_idx], mean[sort_idx] - 0.05 * std[sort_idx], 
+#                  mean[sort_idx] + 0.05 * std[sort_idx], color='blue', alpha=0.2, label='95% Confidence Interval')
 plt.legend()
 plt.title("Deep Gaussian Process on Piecewise Function")
 plt.xlabel("x")
