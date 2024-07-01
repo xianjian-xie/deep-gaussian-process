@@ -2,7 +2,8 @@ library(deepgp)
 library(lhs)
 
 
-seed <- 1
+seed <- 3
+set.seed(seed)
 layers <- 1 # 1, 2, or 3
 
 n <- 10 # number of points in starting design
