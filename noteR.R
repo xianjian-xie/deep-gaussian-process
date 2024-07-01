@@ -111,11 +111,11 @@ xp = aperm(array(data=xp,dim=c(2,2)), c(2,1))
 
 
 fit <- fit_one_layer(x, y, nmcmc = 10000, verb = FALSE)
-fit <- trim(fit, 5000, 2)
+# fit <- trim(fit, 5000, 2)
 
-fit <- predict(fit, xp, lite = FALSE)
+# fit <- predict(fit, xp, lite = FALSE)
 
-cat('predict mean', fit$mean)
+# cat('predict mean', fit$mean)
 
 
 
