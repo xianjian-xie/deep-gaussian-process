@@ -323,23 +323,9 @@ def check_initialization(initial, layers=2, x=None, D=None, vecchia=None, v=None
     return initial
 
 def check_settings(settings, layers=1, D=None):
-    """
-    Check and initialize the settings for the given layers and dimensions.
-    
-    Parameters:
-    settings : dict
-        Dictionary containing the settings.
-    layers : int
-        Number of layers.
-    D : int, optionalDimensions.
-    
-    Returns:
-    settings : dict
-        Updated settings dictionary.
-    """
-    # print('settings', settings)
-    if settings is None or 'l' not in settings or settings['l'] is None:
+    if settings is None:
         settings = {}
+    if 'l' not in settings or settings['l'] is None:
         settings['l'] = 1
     if 'u' not in settings or settings['u'] is None:
         settings['u'] = 2
@@ -354,7 +340,13 @@ def check_settings(settings, layers=1, D=None):
     if 'g' not in settings['beta'] or settings['beta']['g'] is None:
         settings['beta']['g'] = 3.9
 
-    if layers == 2:
+    if layers == 1:
+        if 'theta' not in settings['alpha'] or settings['alpha']['theta'] is None:
+            settings['alpha']['theta'] = 1.5
+        if 'theta' not in settings['beta'] or settings['beta']['theta'] is None:
+            settings['beta']['theta'] = 3.9 / 1.5
+
+    elif layers == 2:
         if 'theta_w' not in settings['alpha'] or settings['alpha']['theta_w'] is None:
             settings['alpha']['theta_w'] = 1.5
         if 'theta_y' not in settings['alpha'] or settings['alpha']['theta_y'] is None:
@@ -364,27 +356,55 @@ def check_settings(settings, layers=1, D=None):
         if 'theta_y' not in settings['beta'] or settings['beta']['theta_y'] is None:
             settings['beta']['theta_y'] = 3.9 / 6
 
+    elif layers == 3:
+        if 'theta_z' not in settings['alpha'] or settings['alpha']['theta_z'] is None:
+            settings['alpha']['theta_z'] = 1.5
+        if 'theta_w' not in settings['alpha'] or settings['alpha']['theta_w'] is None:
+            settings['alpha']['theta_w'] = 1.5
+        if 'theta_y' not in settings['alpha'] or settings['alpha']['theta_y'] is None:
+            settings['alpha']['theta_y'] = 1.5
+        if 'theta_z' not in settings['beta'] or settings['beta']['theta_z'] is None:
+            settings['beta']['theta_z'] = 3.9 / 4
+        if 'theta_w' not in settings['beta'] or settings['beta']['theta_w'] is None:
+            settings['beta']['theta_w'] = 3.9 / 12
+        if 'theta_y' not in settings['beta'] or settings['beta']['theta_y'] is None:
+            settings['beta']['theta_y'] = 3.9 / 6
+
     return settings
+
 
 
 eps = 1.5e-8  # Define a small value for eps
 
 def sample_g(out_vec, in_dmat, g_t, theta, alpha, beta, l, u, ll_prev=None, v=None):
     # Propose value
-    g_star = np.random.uniform(low=l * g_t / u, high=u * g_t / l)
+    # g_star = np.random.uniform(low=l * g_t / u, high=u * g_t / l)
+    g_star = 0.02
+    print('g_star is', g_star)
 
     # Compute acceptance threshold
-    ru = np.random.uniform(low=0, high=1)
+    # ru = np.random.uniform(low=0, high=1)
+    ru = 0.7
+    print('ru is', ru)
     if ll_prev is None:
         ll_prev = logl(out_vec, in_dmat, g_t, theta, outer=True, v=v)['logl']
+        print('ll_prev is', ll_prev)
     
     lpost_threshold = (ll_prev + gamma.logpdf(g_t - eps, a=alpha, scale=1/beta) + 
                        np.log(ru) - np.log(g_t) + np.log(g_star))
+    print('lpost_threshold is', lpost_threshold)
+
 
     ll_new = logl(out_vec, in_dmat, g_star, theta, outer=True, v=v)['logl']
+    
+    print('ll_new is', ll_new)
+
 
     # Accept or reject (lower bound of eps)
     new = ll_new + gamma.logpdf(g_star - eps, a=alpha, scale=1/beta)
+    
+    print('new is', new)
+    
     if new > lpost_threshold:
         return {'g': g_star, 'll': ll_new}
     else:
@@ -492,169 +512,90 @@ def sample_w(out_vec, w_t, w_t_dmat, in_dmat, g, theta_y, theta_w, ll_prev=None,
     
     return {'w': w_t, 'll': ll_prev, 'dw': dw}
 
-def gibbs_two_layer(x, y, nmcmc, D, verb, initial, true_g, settings, v):
-    """
-    Perform Gibbs sampling for a two-layer Gaussian Process model.
-    
-    Parameters:
-    x (np.ndarray): Input data matrix of shape (n_samples, n_features).
-    y (np.ndarray): Observed response vector or matrix of shape (n_samples,).
-    nmcmc (int): Number of MCMC iterations.
-    D (int): number of latent variables
-    verb (bool): Verbosity flag to print progress information.
-    initial (dict): Dictionary containing initial values for the model parameters, such as 'g', 'theta_y', 'theta_w', 'w', and 'tau2'.
-    true_g (float or None): Fixed value for the nugget (noise) parameter. If None, the nugget will be sampled.
-    settings (dict): Dictionary containing hyperparameters and other settings for the sampling process, such as 'alpha', 'beta', 'l', 'u', 'pmx', and 'inner_tau2'.
-        - 'alpha' (dict): Dictionary containing shape parameters for the Gamma priors on theta and g. 
-            - 'g' (float): Shape parameter for the Gamma prior on g.
-            - 'theta' (float): Shape parameter for the Gamma prior on theta.
-            - 'theta_w' (float): Shape parameter for the Gamma prior on theta_w.
-            - 'theta_y' (float): Shape parameter for the Gamma prior on theta_y.
-        - 'beta' (dict): Dictionary containing rate parameters for the Gamma priors on theta and g.
-            - 'g' (float): Rate parameter for the Gamma prior on g.
-            - 'theta' (float): Rate parameter for the Gamma prior on theta.
-            - 'theta_w' (float): Rate parameter for the Gamma prior on theta_w.
-            - 'theta_y' (float): Rate parameter for the Gamma prior on theta_y.
-        - 'l' (float): Lower bound for the uniform proposal distribution in the sampling process.
-        - 'u' (float): Upper bound for the uniform proposal distribution in the sampling process.
-        - 'pmx' (bool): Flag indicating whether to use a prior mean of x for the latent variables.
-        - 'inner_tau2' (float): Scaling factor for the inner layer of the latent variables when using a prior mean of x.
-    v (float): Smoothness parameter for the Matern kernel. v=999 indicates the use of the squared exponential kernel.
-    
-    Returns:
-    dict: A dictionary containing sampled values for 'g', 'theta_y', 'theta_w', 'w', 'tau2', and 'll'.
-    """
-    
+import numpy as np
+
+def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
     dx = sq_dist(x)
-    dw = sq_dist(initial['w'])
-    
     g = np.zeros(nmcmc)
-    g[0] = initial['g'] if true_g is None else true_g
-    
-    theta_y = np.zeros(nmcmc)
-    theta_y[0] = initial['theta_y']
-    
-    theta_w = np.zeros((nmcmc, D))
-    theta_w[0, :] = initial['theta_w']
-    
-    w = [None] * nmcmc
-    w[0] = deepcopy(initial['w'])
-    # print('h1',w[0])
-    
+    if true_g is None:
+        g[0] = initial['g']
+    else:
+        g[0] = true_g
+    theta = np.zeros(nmcmc)
+    theta[0] = initial['theta']
     tau2 = np.zeros(nmcmc)
     tau2[0] = initial['tau2']
-    
     ll_store = np.zeros(nmcmc)
     ll_store[0] = np.nan
-    
-    ll_outer = None
+    ll = None
     
     for j in range(1, nmcmc):
-        
-        # print('loop number', j)
         if verb and (j % 500 == 0):
-            print('each 500', j)
+            print(j)
         
         # Sample nugget (g)
         if true_g is None:
-            samp = sample_g(y, dw, g[j - 1], theta_y[j - 1], 
-                            alpha=settings['alpha']['g'], beta=settings['beta']['g'], 
-                            l=settings['l'], u=settings['u'], ll_prev=ll_outer, 
-                            v=v)
-            
+            samp = sample_g(y, dx, g[j - 1], theta[j - 1], alpha=settings['alpha']['g'], 
+                            beta=settings['beta']['g'], l=settings['l'], u=settings['u'], 
+                            ll_prev=ll, v=v)
             g[j] = samp['g']
-            ll_outer = samp['ll']
-            # print('g_ll_outer',ll_outer)
+            ll = samp['ll']
         else:
             g[j] = true_g
         
-        # Sample outer lengthscale (theta_y)
-        
-        samp = sample_theta(y, dw, g[j], theta_y[j - 1], 
-                            alpha=settings['alpha']['theta_y'], 
-                            beta=settings['beta']['theta_y'], l=settings['l'], 
-                            u=settings['u'], outer=True, ll_prev=ll_outer, 
-                            v=v, tau2=True)
-        
-        theta_y[j] = samp['theta']
-        ll_outer = samp['ll']
-        # print('theta_ll_outer',ll_outer)
-        tau2[j] = samp['tau2'] if samp['tau2'] is not None else tau2[j - 1]
-        
-        # Sample inner lengthscale (theta_w) - separately for each dimension
-        for i in range(D):
-            prior_mean = x[:, i] if settings['pmx'] else 0
-            
-            samp = sample_theta(w[j - 1][:, i], dx, g=1.5e-8, theta_t=theta_w[j - 1, i],
-                                alpha=settings['alpha']['theta_w'], 
-                                beta=settings['beta']['theta_w'], l=settings['l'], 
-                                u=settings['u'], outer=False, v=v,
-                                prior_mean=prior_mean,
-                                scale=settings['inner_tau2'])
-            
-            theta_w[j, i] = samp['theta']
-        
-        # Sample hidden Gaussian layer (w)
-        # print('x7 is',x,'y7 is',y, settings['pmx'])
-        prior_mean = x if settings['pmx'] else np.zeros((x.shape[0], D))
-        # print('x7.5 is',x,'y7.5 is',y)
-        # print('prior1', prior_mean)
-        samp = sample_w(y, w[j - 1], dw, dx, g[j], theta_y[j], theta_w[j, :], 
-                        ll_prev=ll_outer, v=v, prior_mean=prior_mean,
-                        scale=settings['inner_tau2'])
-        # print('x8 is',x,'y8 is',y)
-        w[j] = samp['w']
-        ll_outer = samp['ll']
-        ll_store[j] = ll_outer
-        dw = samp['dw']
+        # Sample lengthscale (theta)
+        samp = sample_theta(y, dx, g[j], theta[j - 1], 
+                            alpha=settings['alpha']['theta'],
+                            beta=settings['beta']['theta'], l=settings['l'], 
+                            u=settings['u'], outer=True, ll_prev=ll, v=v, 
+                            tau2=True)
+        theta[j] = samp['theta']
+        ll = samp['ll']
+        ll_store[j] = ll
+        if samp['tau2'] is None:
+            tau2[j] = tau2[j - 1]
+        else:
+            tau2[j] = samp['tau2']
     
-    return {'g': g, 'theta_y': theta_y, 'theta_w': theta_w, 'w': w, 'tau2': tau2, 'll': ll_store}
+    return {'g': g, 'theta': theta, 'tau2': tau2, 'll': ll_store}
 
 
-def fit_two_layer(x, y, nmcmc=10000, D=1, pmx=False, verb=True, w_0=None, g_0=0.01,
-                  theta_y_0=0.1, theta_w_0=0.1, true_g=None, settings=None, cov="exp2",
-                  v=2.5, vecchia=False, m=None, ordering=None):
-
-    if D is None:
-        D = x.shape[1] if isinstance(x, np.ndarray) else 1
-
+def fit_one_layer(x, y, nmcmc=10000, sep=False, verb=True, g_0=0.01, 
+                  theta_0=0.1, true_g=None, settings=None, cov="matern", v=2.5, 
+                  vecchia=False, m=None, ordering=None):
+    start_time = time.time()
+    
     if m is None:
         m = min(25, len(y) - 1)
-
-    tic = time.time()
-
+            
     if cov == "exp2":
         v = 999  # solely used as an indicator
-
+        
+    if not vecchia and len(y) > 300:
+        print("'vecchia = TRUE' is recommended for faster computation.")
+        
     if nmcmc <= 1:
         raise ValueError("nmcmc must be greater than 1")
 
     # Check inputs
-    x = np.asarray(x)
-    settings = check_settings(settings, layers=2, D=D)
-    initial = {'w': w_0, 'theta_y': theta_y_0, 'theta_w': theta_w_0, 'g': g_0, 'tau2': 1}
-    initial = check_initialization(initial, layers=2, x=x, D=D, vecchia=vecchia, v=v, m=m)
-
+    if isinstance(x, (list, np.ndarray)) and np.isscalar(x[0]):
+        x = np.reshape(x, (-1, 1))
+        
+    if sep and x.shape[1] == 1:
+        sep = False  # no need for separable theta in one dimension
+        
+    settings = check_settings(settings, layers=1)
+    initial = {'theta': theta_0, 'g': g_0, 'tau2': 1}
+    
     if m >= len(y):
         raise ValueError("m must be less than the length of y")
-
-    # Check prior mean setting
-    if pmx == 0:
-        # print('jin 0')
-        pmx = False
-
-    if not isinstance(pmx, (int, float)):
-        # print('jin 1', pmx)
-        settings['inner_tau2'] = pmx
-        pmx = True
-    else:
-        # print('jin 2')
-        settings['inner_tau2'] = 1  # default value for pmx and prior mean zero
-
-    if pmx and x.shape[1] != D:
-        raise ValueError("pmx = TRUE requires D = ncol(x)")
-
-    settings['pmx'] = pmx
+        
+    if cov == "matern" and v not in [0.5, 1.5, 2.5]:
+        raise ValueError("v must be one of 0.5, 1.5, or 2.5")
+        
+    if ordering is not None:
+        if not vecchia:
+            print("ordering only used when vecchia = TRUE")
 
     # Create output object
     out = {'x': x, 'y': y, 'nmcmc': nmcmc, 'settings': settings, 'v': v}
@@ -664,41 +605,19 @@ def fit_two_layer(x, y, nmcmc=10000, D=1, pmx=False, verb=True, w_0=None, g_0=0.
         out['ordering'] = ordering
 
     # Conduct MCMC
-    
-    samples = gibbs_two_layer(x, y, nmcmc, D, verb, initial, true_g, settings, v)
-    print('samples', samples)
-    
+     
+    samples = gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v)
+            
     out.update(samples)
+    out['time'] = time.time() - start_time
     
-    # samples.update(out)
-    toc = time.time()
-    out['time'] = toc - tic
-
-    out['class'] = "dgp2vec" if vecchia else "dgp2"
+    if vecchia:
+        out['class'] = 'gpvec'
+    else:
+        out['class'] = 'gp'
+        
     return out
 
-def trim_dgp2(object, burn, thin=1):
-    tic = time.process_time()
-    
-    if burn >= object['nmcmc']:
-        raise ValueError('burn must be less than nmcmc')
-    
-    nmcmc = object['nmcmc']
-    indx = np.arange(burn + 1, nmcmc + 1)  
-    indx = indx[indx % thin == 0]
-    
-    object['nmcmc'] = len(indx)
-    object['g'] = object['g'][indx - 1]  
-    object['theta_y'] = object['theta_y'][indx - 1]
-    object['theta_w'] = object['theta_w'][indx - 1, :]
-    object['w'] = [object['w'][i - 1] for i in indx]  # list comprehension for list slicing
-    object['tau2'] = object['tau2'][indx - 1]
-    object['ll'] = object['ll'][indx - 1]
-    
-    toc = time.process_time()
-    object['time'] = object['time'] + (toc - tic)
-    
-    return object
 
 def ifel(logical, yes, no):
 
@@ -1205,12 +1124,17 @@ def alc_dgp2(object, x_new=None, ref=None, cores=1):
 
 
 #######1d usecase
+np.random.seed(1980)
+print('random is', np.random.rand(1))
+
+
+
 root = os.getcwd() 
 log_path =  os.path.join(root, 'log')
 print('log_path', log_path)
 
-seed = 2
-layers = 2
+seed = 1
+layers = 1
 
 print(f"seed is {seed}")
 np.random.seed(seed)
@@ -1218,7 +1142,7 @@ print(f"layers is {layers}")
 
 # Generate original data and reference grid
 n = 10
-new_n = 40
+new_n = 0
 # new_n = 10
 m = 100
 noise = 0.1
@@ -1229,48 +1153,52 @@ noise = 0.1
 # Evaluate the objective function at these points and add noise
 # y = np.apply_along_axis(f, 1, x) + np.random.normal(0, noise, n).reshape(-1,1)
 
-x = np.array([1.36981,    -1.38577,
-0.587107,    0.708629,
-1.11078 ,   -1.35198,
-0.604678,   -0.113224,
--1.09662,     0.86328,
--1.93585,    -2.09702,
--0.796596,    0.589165,
--0.172759 ,   0.317555,
-0.414028 ,   0.952823,
--1.8498,   -0.231656,
-1.11212 ,     0.4542,
-0.711986 ,   -1.96284,
--0.0535862,   0.0855292,
-1.35658 ,    1.17783,
--1.29087 ,    0.13915,
-0.765691  ,  -1.04417,
--0.13442   , 0.297845,
--1.0086  ,  0.890088,
-0.311205  ,  0.482937,
--0.00486998,     1.22764]).reshape((-1,2))
+# x = np.array([1.36981,    -1.38577,
+# 0.587107,    0.708629,
+# 1.11078 ,   -1.35198,
+# 0.604678,   -0.113224,
+# -1.09662,     0.86328,
+# -1.93585,    -2.09702,
+# -0.796596,    0.589165,
+# -0.172759 ,   0.317555,
+# 0.414028 ,   0.952823,
+# -1.8498,   -0.231656,
+# 1.11212 ,     0.4542,
+# 0.711986 ,   -1.96284,
+# -0.0535862,   0.0855292,
+# 1.35658 ,    1.17783,
+# -1.29087 ,    0.13915,
+# 0.765691  ,  -1.04417,
+# -0.13442   , 0.297845,
+# -1.0086  ,  0.890088,
+# 0.311205  ,  0.482937,
+# -0.00486998,     1.22764]).reshape((-1,2))
+
+x = np.array([1,2,3,4]).reshape((-1,2))
 print('x is', x)
 
-y = np.array([-0.766594,
--0.522244,
--0.722181,
--0.562775,
- 0.529142,
-  2.80303,
- 0.166224,
--0.266232,
--0.460391,
-  2.62303,
--0.655071,
--0.667461,
- -0.33331,
--0.675061,
- 0.760724,
--0.641081,
--0.285415,
- 0.416961,
--0.449543,
--0.291749]).reshape((-1,1))
+# y = np.array([-0.766594,
+# -0.522244,
+# -0.722181,
+# -0.562775,
+#  0.529142,
+#   2.80303,
+#  0.166224,
+# -0.266232,
+# -0.460391,
+#   2.62303,
+# -0.655071,
+# -0.667461,
+#  -0.33331,
+# -0.675061,
+#  0.760724,
+# -0.641081,
+# -0.285415,
+#  0.416961,
+# -0.449543,
+# -0.291749]).reshape((-1,1))
+
+y = np.array([3,7]).reshape((-1,1))
 
 
 # x = lhs(1, samples=n)
@@ -1310,7 +1238,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 1000
+        nmcmc = 2
         burn = 8000
         thin = 2
     else:
@@ -1319,77 +1247,77 @@ for t in range(n, n + new_n + 1):
         thin = 2
     
     # Fit Model
-    fit = fit_two_layer(x, y, D=2, nmcmc=nmcmc, g_0=g_0, theta_y_0=theta_y_0, theta_w_0=theta_w_0, w_0=w_0)
-    print('param theta is', fit['theta'][nmcmc])
-    print('param tau2 is', fit['tau2'][nmcmc])
+    fit = fit_one_layer(x, y, nmcmc=nmcmc, g_0=g_0, theta_0=theta_0)
+    print('param theta is', fit['theta'][nmcmc-1])
+    print('param tau2 is', fit['tau2'][nmcmc-1])
 
-    # Trim, predict, and calculate ALC
-    fit = trim_dgp2(fit, burn=burn, thin=thin)
-    fit = predict_dgp2(fit, xx, lite=False)
-    alc_list = alc_dgp2(fit)
-    alc = alc_list['value']
-    fit_time = fit['time'] + alc_list['time']
+#     # Trim, predict, and calculate ALC
+#     fit = trim_dgp2(fit, burn=burn, thin=thin)
+#     fit = predict_dgp2(fit, xx, lite=False)
+#     alc_list = alc_dgp2(fit)
+#     alc = alc_list['value']
+#     fit_time = fit['time'] + alc_list['time']
     
-    # Store metrics
-    time_store[t] = fit_time
-    rmse_store[t] = rmse(yy, fit['mean'])
-    score_store[t] = score(yy, fit['mean'].reshape((-1,1)), fit['Sigma'])
-    print('yy', yy, yy.shape)
-    print('fit mean', fit['mean'], fit['mean'].shape)
-    print('rmse_score', rmse_store[t], rmse_store[t].shape)
-    with open(log_path  + '.txt', 'a') as file:
-        # print('yy{}: {}, {}'.format(t, yy, yy.shape), file=file)
-        # print('fit mean{}: {}, {}'.format(t, fit['mean'], fit['mean'].shape), file=file)
-        print('rmse{}: {}, {}'.format(t, rmse_store[t], rmse_store[t].shape), file=file)
-        print('score{}: {}, {}'.format(t, score_store[t], rmse_store[t].shape), file=file)
-        print('x_new_list{}: {}'.format(t, x_new_list),file=file)
-        file.flush()
+#     # Store metrics
+#     time_store[t] = fit_time
+#     rmse_store[t] = rmse(yy, fit['mean'])
+#     score_store[t] = score(yy, fit['mean'].reshape((-1,1)), fit['Sigma'])
+#     print('yy', yy, yy.shape)
+#     print('fit mean', fit['mean'], fit['mean'].shape)
+#     print('rmse_score', rmse_store[t], rmse_store[t].shape)
+#     with open(log_path  + '.txt', 'a') as file:
+#         # print('yy{}: {}, {}'.format(t, yy, yy.shape), file=file)
+#         # print('fit mean{}: {}, {}'.format(t, fit['mean'], fit['mean'].shape), file=file)
+#         print('rmse{}: {}, {}'.format(t, rmse_store[t], rmse_store[t].shape), file=file)
+#         print('score{}: {}, {}'.format(t, score_store[t], rmse_store[t].shape), file=file)
+#         print('x_new_list{}: {}'.format(t, x_new_list),file=file)
+#         file.flush()
     
-    print('fit sigma', np.diag(fit['Sigma']), np.diag(fit['Sigma']).shape)
-    print('fit alc', alc, alc.shape)
-    plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t]}
+#     print('fit sigma', np.diag(fit['Sigma']), np.diag(fit['Sigma']).shape)
+#     print('fit alc', alc, alc.shape)
+#     plot = {'mean': fit['mean'], 'sigma': np.diag(fit['Sigma']), 'alc': alc, 'rmse': rmse_store[t], 'score': score_store[t]}
     
     
-    with open(f'plot{t}.pyc', 'wb') as file:
-        pickle.dump(plot, file)
-        file.close()
+#     with open(f'plot{t}.pyc', 'wb') as file:
+#         pickle.dump(plot, file)
+#         file.close()
     
-    # with open('plot.pkl', 'rb') as f:
-    #     plot = pickle.load(f)
+#     # with open('plot.pkl', 'rb') as f:
+#     #     plot = pickle.load(f)
 
-    if t == n + new_n:
-        break
+#     if t == n + new_n:
+#         break
     
-    # Select next design point
-    x_new = xx[np.argmax(alc)]
-    x_new_list.append(x_new)
-    print('x_new', x_new)
-    x = np.vstack((x, x_new))
-    y = np.append(y, f(x_new) + np.random.normal(0, noise))
+#     # Select next design point
+#     x_new = xx[np.argmax(alc)]
+#     x_new_list.append(x_new)
+#     print('x_new', x_new)
+#     x = np.vstack((x, x_new))
+#     y = np.append(y, f(x_new) + np.random.normal(0, noise))
     
-    # Adjust starting locations for the next iteration
-    g_0 = fit['g'][fit['nmcmc'] - 1]
-    theta_y_0 = fit['theta_y'][fit['nmcmc'] - 1]
-    theta_w_0 = fit['theta_w'][fit['nmcmc'] - 1]
-    w_0 = fit['w'][fit['nmcmc'] - 1]
+#     # Adjust starting locations for the next iteration
+#     g_0 = fit['g'][fit['nmcmc'] - 1]
+#     theta_y_0 = fit['theta_y'][fit['nmcmc'] - 1]
+#     theta_w_0 = fit['theta_w'][fit['nmcmc'] - 1]
+#     w_0 = fit['w'][fit['nmcmc'] - 1]
          
         
-        # Save results
-    results_df = pd.DataFrame({
-        'time': time_store,
-        'rmse': rmse_store,
-        'score': score_store
-    })
-    # results_df.to_csv(f"1D_layer{layers}_seed{seed}.csv", index=False)
+#         # Save results
+#     results_df = pd.DataFrame({
+#         'time': time_store,
+#         'rmse': rmse_store,
+#         'score': score_store
+#     })
+#     # results_df.to_csv(f"1D_layer{layers}_seed{seed}.csv", index=False)
 
-# Save final results
-results_df = pd.DataFrame({
-    'time': time_store,
-    'rmse': rmse_store,
-    'score': score_store
-})
-# results_df.to_csv(f"1D_layer{layers}_seed{seed}.csv", index=False)
+# # Save final results
+# results_df = pd.DataFrame({
+#     'time': time_store,
+#     'rmse': rmse_store,
+#     'score': score_store
+# })
+# # results_df.to_csv(f"1D_layer{layers}_seed{seed}.csv", index=False)
 
-print('x_new_list', x_new_list)
+# print('x_new_list', x_new_list)
 
-#######
+# #######
