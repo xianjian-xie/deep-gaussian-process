@@ -21,19 +21,20 @@ def f(x):
         return np.cos(6 * np.pi * x) * 1.35
     
 # logl: evaluates MVN log likelihood with zero mean, formula 2 and formula 8
-def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale=1):
+def logl(out_vec, in_dmat, in_vec_list, g, theta, outer=True, v=None, tau2=False, mu=0, scale=1):
     # print('theta,g,scale', theta, g, scale)
     n = len(out_vec)
-    K = scale * Exp2(in_dmat, 1, theta, g)
-    print('K', K)
+    # K = scale * Exp2(in_dmat, 1, theta, g)
+    K = squared_exponential_covariance(in_vec_list[0], in_vec_list[1], 1, theta, g)
+    print('K is', K.shape, K[:3,:3])
     # print('in_dmat', in_dmat)
     inv_det = inv_det_py(K)
     
     Mi = inv_det['Mi']
     ldet = inv_det['ldet']
-    print('Mi', Mi)
-    print('ldet', ldet)
-    print('out_vec shape', out_vec.shape)
+    # print('Mi', Mi)
+    # print('ldet', ldet)
+    # print('out_vec shape', out_vec.shape)
     quadterm = (out_vec - mu).T @ Mi @ (out_vec - mu)
     print('quadterm', quadterm, quadterm.shape)
     if (outer):
@@ -48,7 +49,7 @@ def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale
     else:
         tau2_val = None
 
-    print('tau2_val', tau2_val)
+    print('tau2_val', tau2_val, tau2_val.shape)
 
     return {'logl': logl_val, 'tau2': tau2_val}
 
@@ -67,6 +68,19 @@ def Exp2(distmat, tau2, theta, g):
             covmat[i,i] += tau2 * g
 
     return covmat
+
+def squared_exponential_covariance(x1, x2, tau2, theta, g):
+
+    k = np.zeros((x1.shape[0], x2.shape[0]))
+    for i in range(x1.shape[0]):
+        for j in range(x2.shape[0]):
+            # Compute the scaled distance r_l(x1, x2)
+            r_l = np.sqrt(np.sum(((x1[i] - x2[j]) / theta) ** 2))
+            # print('rl', r_l)
+            # cov_val = tau2 * np.exp(-0.5 * r_l**2) + g * (x1 == x2).all()
+            cov_val = tau2 * np.exp(-0.5 * r_l**2) + g * (x1 == x2).all()
+            k[i,j] = cov_val
+    return k
 
 def inv_det_py(M):
     try:
@@ -386,19 +400,19 @@ def check_settings(settings, layers=1, D=None):
 
 eps = 1.5e-8  # Define a small value for eps
 
-def sample_g(out_vec, in_dmat, g_t, theta, alpha, beta, l, u, ll_prev=None, v=None):
+def sample_g(out_vec, in_dmat, in_vec_list, g_t, theta, alpha, beta, l, u, ll_prev=None, v=None):
     # Propose value
     g_star = np.random.uniform(low=l * g_t / u, high=u * g_t / l)
 
     # Compute acceptance threshold
     ru = np.random.uniform(low=0, high=1)
 
-    g_star = 0.0112553
-    ru = 0.720324
+    # g_star = 0.0112553
+    # ru = 0.720324
     print('g_star is', g_star)
     print('ru is', ru)
     if ll_prev is None:
-        ll_prev = logl(out_vec, in_dmat, g_t, theta, outer=True, v=v)['logl']
+        ll_prev = logl(out_vec, in_dmat, in_vec_list, g_t, theta, outer=True, v=v)['logl']
         print('ll_prev is', ll_prev)
     # print('all param', g_t, alpha, beta, ru, g_star, gamma.logpdf(g_t - eps, a=alpha, scale=1/beta))
     lpost_threshold = (ll_prev + gamma.logpdf(g_t - eps, a=alpha, scale=1/beta) + 
@@ -406,7 +420,7 @@ def sample_g(out_vec, in_dmat, g_t, theta, alpha, beta, l, u, ll_prev=None, v=No
     print('lpost_threshold is', lpost_threshold)
 
 
-    ll_new = logl(out_vec, in_dmat, g_star, theta, outer=True, v=v)['logl']
+    ll_new = logl(out_vec, in_dmat, in_vec_list, g_star, theta, outer=True, v=v)['logl']
     
     print('ll_new is', ll_new)
 
@@ -422,9 +436,10 @@ def sample_g(out_vec, in_dmat, g_t, theta, alpha, beta, l, u, ll_prev=None, v=No
         return {'g': g_t, 'll': ll_prev}
 
 
-def sample_theta(out_vec, in_dmat, g, theta_t, alpha, beta, l, u, outer, ll_prev=None, v=None, tau2=False, prior_mean=0, scale=1):
+def sample_theta(out_vec, in_dmat, in_vec_list, g, theta_t, alpha, beta, l, u, outer, ll_prev=None, v=None, tau2=False, prior_mean=0, scale=1):
     # print('enter sample_theta', ll_prev, g)
     # Propose value
+    print('in_vec_list', in_vec_list)
 
     theta_star = np.random.uniform(low=l * theta_t / u, high=u * theta_t / l)
     # theta_star = 0.6
@@ -435,7 +450,7 @@ def sample_theta(out_vec, in_dmat, g, theta_t, alpha, beta, l, u, outer, ll_prev
     # ru = 0.7
     print('theta ru is', ru)
     if ll_prev is None:
-        ll_prev = logl(out_vec, in_dmat, g, theta_t, outer, v, mu=prior_mean, scale=scale)['logl']
+        ll_prev = logl(out_vec, in_dmat, in_vec_list, g, theta_t, outer, v, mu=prior_mean, scale=scale)['logl']
         print('theta ll_prev is', ll_prev)
     
     lpost_threshold = (ll_prev + gamma.logpdf(theta_t - eps, a=alpha, scale=1/beta) + 
@@ -443,7 +458,7 @@ def sample_theta(out_vec, in_dmat, g, theta_t, alpha, beta, l, u, outer, ll_prev
     
     print('theta lpost_threshold is', lpost_threshold)
 
-    ll_new = logl(out_vec, in_dmat, g, theta_star, outer, v, tau2=tau2, mu=prior_mean, scale=scale)
+    ll_new = logl(out_vec, in_dmat, in_vec_list, g, theta_star, outer, v, tau2=tau2, mu=prior_mean, scale=scale)
 
     print('theta ll_new is', ll_new)
 
@@ -543,21 +558,23 @@ def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
         g[0] = initial['g']
     else:
         g[0] = true_g
-    theta = np.zeros(nmcmc)
+    theta = np.zeros((nmcmc,x.shape[1]))
     theta[0] = initial['theta']
+    print('theta0', theta[0])
     tau2 = np.zeros(nmcmc)
     tau2[0] = initial['tau2']
-    ll_store = np.zeros(nmcmc)
+    ll_store = np.zeros((nmcmc,x.shape[1]))
     ll_store[0] = np.nan
     ll = None
     
     for j in range(1, nmcmc):
+        print(f'current {j}')
         if verb and (j % 500 == 0):
             print(j)
         
         # Sample nugget (g)
         if true_g is None:
-            samp = sample_g(y, dx, g[j - 1], theta[j - 1], alpha=settings['alpha']['g'], 
+            samp = sample_g(y, dx, [x,x], g[j - 1], theta[j - 1], alpha=settings['alpha']['g'], 
                             beta=settings['beta']['g'], l=settings['l'], u=settings['u'], 
                             ll_prev=ll, v=v)
             g[j] = samp['g']
@@ -567,15 +584,17 @@ def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
             g[j] = true_g
         
         # Sample lengthscale (theta)
-        samp = sample_theta(y, dx, g[j], theta[j - 1], 
-                            alpha=settings['alpha']['theta'],
-                            beta=settings['beta']['theta'], l=settings['l'], 
-                            u=settings['u'], outer=True, ll_prev=ll, v=v, 
-                            tau2=True)
-        theta[j] = samp['theta']
-        ll = samp['ll']
-        ll_store[j] = ll
-        print(f'theta{j}, ll is {theta[j]}, {ll}')
+        for i in range(x.shape[1]):
+            samp = sample_theta(y, dx, [x[:,i],x[:,i]], g[j], theta[j - 1][i], 
+                                alpha=settings['alpha']['theta'],
+                                beta=settings['beta']['theta'], l=settings['l'], 
+                                u=settings['u'], outer=True, ll_prev=ll, v=v, 
+                                tau2=True)
+            theta[j,i] = samp['theta']
+            ll = samp['ll']
+            ll_store[j,i] = ll
+            
+        print(f'theta round{j}, ll is {theta[j]}, {ll_store[j]}')
 
         if samp['tau2'] is None:
             tau2[j] = tau2[j - 1]
@@ -1189,21 +1208,20 @@ x = np.array([1.36981,    -1.38577,
 -1.93585,    -2.09702,
 -0.796596,    0.589165,
 -0.172759 ,   0.317555,
-0.414028 ,   0.952823,
--1.8498,   -0.231656,
-1.11212 ,     0.4542,
-0.711986 ,   -1.96284,
--0.0535862,   0.0855292,
-1.35658 ,    1.17783,
--1.29087 ,    0.13915,
-0.765691  ,  -1.04417,
--0.13442   , 0.297845,
--1.0086  ,  0.890088,
-0.311205  ,  0.482937,
+# 0.414028 ,   0.952823,
+# -1.8498,   -0.231656,
+# 1.11212 ,     0.4542,
+# 0.711986 ,   -1.96284,
+# -0.0535862,   0.0855292,
+# 1.35658 ,    1.17783,
+# -1.29087 ,    0.13915,
+# 0.765691  ,  -1.04417,
+# -0.13442   , 0.297845,
+# -1.0086  ,  0.890088,
+# 0.311205  ,  0.482937,
 -0.00486998,     1.22764]).reshape((-1,2))
 
-# x = np.array([1,2,3,4]).reshape((-1,2))
-# print('x is', x)
+
 
 y = np.array([-0.766594,
 -0.522244,
@@ -1213,19 +1231,21 @@ y = np.array([-0.766594,
   2.80303,
  0.166224,
 -0.266232,
--0.460391,
-  2.62303,
--0.655071,
--0.667461,
- -0.33331,
--0.675061,
- 0.760724,
--0.641081,
--0.285415,
- 0.416961,
--0.449543,
+# -0.460391,
+#   2.62303,
+# -0.655071,
+# -0.667461,
+#  -0.33331,
+# -0.675061,
+#  0.760724,
+# -0.641081,
+# -0.285415,
+#  0.416961,
+# -0.449543,
 -0.291749]).reshape((-1,1))
 
+# x = np.array([1,2,3,4]).reshape((-1,2))
+# print('x is', x)
 # y = np.array([3,7]).reshape((-1,1))
 
 
@@ -1235,7 +1255,8 @@ y = np.array([-0.766594,
 # Set initial values for MCMC
 g_0 = 0.01
 if layers == 1:
-    theta_0 = 0.5
+    # theta_0 = np.full((1, x.shape[1]), 0.5)
+    theta_0 = np.array([0.2,0.8]).reshape((1,2))
 elif layers == 2:
     theta_y_0 = 0.5
     theta_w_0 = 1
@@ -1266,7 +1287,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 2
+        nmcmc = 100
         burn = 8000
         thin = 2
     else:

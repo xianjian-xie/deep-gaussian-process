@@ -25,7 +25,7 @@ def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale
     # print('theta,g,scale', theta, g, scale)
     n = len(out_vec)
     K = scale * Exp2(in_dmat, 1, theta, g)
-    print('K', K)
+    print('K', K.shape, K[:3,:3])
     # print('in_dmat', in_dmat)
     inv_det = inv_det_py(K)
     
@@ -45,6 +45,7 @@ def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale
 
     if tau2:
         tau2_val = quadterm/n
+        print('tau2_val', tau2_val, tau2_val.shape)
     else:
         tau2_val = None
 
@@ -393,8 +394,8 @@ def sample_g(out_vec, in_dmat, g_t, theta, alpha, beta, l, u, ll_prev=None, v=No
     # Compute acceptance threshold
     ru = np.random.uniform(low=0, high=1)
 
-    g_star = 0.0112553
-    ru = 0.720324
+    # g_star = 0.0112553
+    # ru = 0.720324
     print('g_star is', g_star)
     print('ru is', ru)
     if ll_prev is None:
@@ -1266,7 +1267,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 2
+        nmcmc = 100
         burn = 8000
         thin = 2
     else:
