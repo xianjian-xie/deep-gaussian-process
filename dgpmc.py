@@ -563,7 +563,7 @@ def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
                             ll_prev=ll, v=v)
             g[j] = samp['g']
             ll = samp['ll']
-            print(f'g{j}, ll is {g[j]}, {ll}')
+            print(f'g round{j}, {samp}')
         else:
             g[j] = true_g
         
@@ -576,7 +576,7 @@ def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
         theta[j] = samp['theta']
         ll = samp['ll']
         ll_store[j] = ll
-        print(f'theta{j}, ll is {theta[j]}, {ll}')
+        print(f'theta round{j}, {samp}')
 
         if samp['tau2'] is None:
             tau2[j] = tau2[j - 1]
@@ -1267,7 +1267,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 100
+        nmcmc = 1000
         burn = 8000
         thin = 2
     else:

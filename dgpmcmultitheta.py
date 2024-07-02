@@ -445,13 +445,15 @@ def sample_g(out_vec, in_dmat, in_vec_list, g_t, theta, alpha, beta, l, u, ll_pr
         return {'g': g_t, 'll': ll_prev}
 
 
-def sample_theta(out_vec, in_dmat, in_vec_list, g, theta_t, alpha, beta, l, u, outer, ll_prev=None, v=None, tau2=False, prior_mean=0, scale=1):
+def sample_theta(out_vec, in_dmat, in_vec_list, g, theta_t, i, alpha, beta, l, u, outer, ll_prev=None, v=None, tau2=False, prior_mean=0, scale=1):
     print("")
     print('enter sample_theta ll_prev, g is', ll_prev, g)
     # Propose value
     # print('in_vec_list', in_vec_list)
 
-    theta_star = np.random.uniform(low=l * theta_t / u, high=u * theta_t / l)
+    # theta_star = np.random.uniform(low=l * theta_t[i] / u, high=u * theta_t[i] / l)
+    theta_star = deepcopy(theta_t)
+    theta_star[i] = np.random.uniform(low=l * theta_t[i] / u, high=u * theta_t[i] / l)
     # theta_star = 0.6
     print('sample_theta theta_star is', theta_star)
 
@@ -463,8 +465,8 @@ def sample_theta(out_vec, in_dmat, in_vec_list, g, theta_t, alpha, beta, l, u, o
         ll_prev = logl(out_vec, in_dmat, in_vec_list, g, theta_t, outer, v, mu=prior_mean, scale=scale)['logl']
         print('sample_theta ll_prev is', ll_prev)
     
-    lpost_threshold = (ll_prev + gamma.logpdf(theta_t - eps, a=alpha, scale=1/beta) + 
-                       np.log(ru) - np.log(theta_t) + np.log(theta_star))
+    lpost_threshold = (ll_prev + gamma.logpdf(theta_t[i] - eps, a=alpha, scale=1/beta) + 
+                       np.log(ru) - np.log(theta_t[i]) + np.log(theta_star[i]))
     
     print('sample_theta lpost_threshold is', lpost_threshold)
 
@@ -473,13 +475,15 @@ def sample_theta(out_vec, in_dmat, in_vec_list, g, theta_t, alpha, beta, l, u, o
     print('sample_theta ll_new is', ll_new)
 
     # Accept or reject (lower bound of eps)
-    new = ll_new['logl'] + gamma.logpdf(theta_star - eps, a=alpha, scale=1/beta)
+    new = ll_new['logl'] + gamma.logpdf(theta_star[i] - eps, a=alpha, scale=1/beta)
     print('sample_theta new is', new)
 
     if new > lpost_threshold:
-        return {'theta': theta_star, 'll': ll_new['logl'], 'tau2': ll_new.get('tau2')}
+        print('accept')
+        return {'theta': theta_star[i], 'll': ll_new['logl'], 'tau2': ll_new.get('tau2')}
     else:
-        return {'theta': theta_t, 'll': ll_prev, 'tau2': None}
+        print('refuse')
+        return {'theta': theta_t[i], 'll': ll_prev, 'tau2': None}
 
 
 def sample_w(out_vec, w_t, w_t_dmat, in_dmat, g, theta_y, theta_w, ll_prev=None, v=None, prior_mean=None, scale=1):
@@ -589,33 +593,47 @@ def gibbs_one_layer(x, y, nmcmc, verb, initial, true_g, settings, v):
                             ll_prev=ll, v=v)
             g[j] = samp['g']
             ll = samp['ll']
-            print(f'g{j}, ll is {g[j]}, {ll}')
+            print(f'samp g{j} is, {samp}')
         else:
             g[j] = true_g
         
         samp_list = []
         # Sample lengthscale (theta)
         for i in range(x.shape[1]):
-            samp = sample_theta(y, dx, [x[:,[1]],x[:,[1]]], g[j], theta[j - 1, i], 
+            samp = sample_theta(y, dx, [x,x], g[j], theta[j - 1], i,
                                 alpha=settings['alpha']['theta'],
                                 beta=settings['beta']['theta'], l=settings['l'], 
                                 u=settings['u'], outer=True, ll_prev=ll, v=v, 
                                 tau2=True)
-            samp_list.append(samp)
-        for i in range(x.shape[1]):
-            theta[j,i] = samp_list[i]['theta']
-            ll = samp_list[x.shape[1]-1]['ll']
-            ll_store[j,i] = samp_list[i]['ll']
-            if samp_list[x.shape[1]-1]['tau2'] is None:
+            theta[j,i] = samp['theta']
+            ll = samp['ll']
+            ll_store[j,i] = ll
+            if samp['tau2'] is None:
                 print('tau2 none')
                 tau2[j] = tau2[j - 1]
             else:
                 print('tau2 true')
-                tau2[j] = samp_list[x.shape[1]-1]['tau2']
+                tau2[j] = samp['tau2']
+
+
+        #     print(f'samp theta{j} is, {samp}')
+        #     samp_list.append(samp)
+        # for i in range(x.shape[1]):
+        #     print('h1', samp_list[i]['theta'])
+        #     theta[j,i] = samp_list[i]['theta']
+        #     ll = samp_list[x.shape[1]-1]['ll']
+        #     ll_store[j,i] = samp_list[i]['ll']
+        #     if samp_list[x.shape[1]-1]['tau2'] is None:
+        #         print('tau2 none')
+        #         tau2[j] = tau2[j - 1]
+        #     else:
+        #         print('tau2 true')
+        #         tau2[j] = samp_list[x.shape[1]-1]['tau2']
 
             
-        print(f'theta_val round{j}, ll is {theta[j]}, {ll_store[j]}')
-        print(f'tau2{j} is {tau2[j]}')
+        print(f'!!!theta_val round{j}, mean is {theta[j]}, {np.mean(theta[:,0])}, {np.mean(theta[:,1])}')
+        print(f'!!!tau2 round{j} is {tau2[j]}, {np.mean(tau2)}')
+        print(f'!!!g round{j} is {g[j]}, {np.mean(g)}')
         print()
 
     return {'g': g, 'theta': theta, 'tau2': tau2, 'll': ll_store}
@@ -1301,7 +1319,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 3
+        nmcmc = 10000
         burn = 8000
         thin = 2
     else:
