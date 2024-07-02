@@ -25,15 +25,15 @@ def logl(out_vec, in_dmat, g, theta, outer=True, v=None, tau2=False, mu=0, scale
     # print('theta,g,scale', theta, g, scale)
     n = len(out_vec)
     K = scale * Exp2(in_dmat, 1, theta, g)
-    print('K', K.shape, K[:3,:3])
+    # print('K', K.shape, K)
     # print('in_dmat', in_dmat)
     inv_det = inv_det_py(K)
     
     Mi = inv_det['Mi']
     ldet = inv_det['ldet']
-    print('Mi', Mi)
-    print('ldet', ldet)
-    print('out_vec shape', out_vec.shape)
+    # print('Mi', Mi[:3,:3])
+    # print('ldet', ldet)
+    # print('out_vec shape', out_vec.shape)
     quadterm = (out_vec - mu).T @ Mi @ (out_vec - mu)
     print('quadterm', quadterm, quadterm.shape)
     if (outer):
