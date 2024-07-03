@@ -87,6 +87,7 @@ def squared_exponential_covariance(x1, x2, tau2, theta, g):
             if i == j:
                 cov_val += g
             k[i,j] += cov_val
+    # print('k is', k)
     return k
 
 def inv_det_py(M):
@@ -1319,7 +1320,7 @@ for t in range(n, n + new_n + 1):
 
     
     if t == n:
-        nmcmc = 10000
+        nmcmc = 2
         burn = 8000
         thin = 2
     else:
