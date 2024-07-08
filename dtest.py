@@ -33,17 +33,56 @@ def squared_exponential_covariance(x1, x2, tau2, theta, g):
     return k
 
 # Example usage:
-x1 = np.array([1.0, 2.0, 3.0])
-x2 = np.array([2, 4, 6])
-tau2 = 1.0
-theta = np.array([1.0, 2.0, 3.0])
-g = 0.1
+# x1 = np.array([1.0, 2.0, 3.0])
+# x2 = np.array([2, 4, 6])
+# tau2 = 1.0
+# theta = np.array([1.0, 2.0, 3.0])
+# g = 0.1
 
-covariance = squared_exponential_covariance(x1, x2, tau2, theta, g)
-print("Covariance:", covariance)
+# covariance = squared_exponential_covariance(x1, x2, tau2, theta, g)
+# print("Covariance:", covariance)
 
 
 # a = np.zeros((2,2))
 # b = np.full((2,1),1)
 # a[:,0] = b
 # print(a.shape, a[0].shape, a[0,:].shape, a[:,0].shape, b.shape)
+
+
+# import random
+
+# # Set the seed
+# random.seed(123)
+
+# # Define the bounds
+# lower_bound = 10
+# upper_bound = 20
+
+# # Generate a random number from the uniform distribution
+# random_number_py = random.uniform(lower_bound, upper_bound)
+# print(random_number_py)
+
+
+# np.random.seed(123)
+
+# lower_bound = 10
+# upper_bound = 20
+
+# random_number_py = np.random.uniform(low=lower_bound, high=upper_bound)
+# print(random_number_py)
+
+
+
+import numpy as np
+
+# Set the seed
+np.random.seed(123)
+
+# Define the bounds
+lower_bound = 10
+upper_bound = 20
+
+# Generate a random number from the uniform distribution
+random_number_py = np.random.uniform(lower_bound, upper_bound)
+print(random_number_py)
+
